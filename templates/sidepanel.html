@@ -1,0 +1,69 @@
+<aside class="w-64 bg-[#0f172a] dark:bg-[#0f172a] border-r border-slate-300 dark:border-slate-800/60 flex flex-col justify-between hidden md:flex shrink-0 shadow-xl transition-colors duration-300" style="background-color: var(--sidebar-bg, #0f172a);">
+    <div class="p-6">
+        <div class="flex items-center justify-between mb-8">
+            <div class="flex items-center gap-3">
+                <span class="text-xl">🛡️</span>
+                <h2 class="text-lg font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500">XAI-Sentinel</h2>
+            </div>
+            <!-- Theme Toggle Button in Sidebar -->
+            <button onclick="toggleTheme()" class="neu-button p-2 rounded-xl text-sky-500 dark:text-sky-400 text-xs font-bold" title="Toggle Theme">
+                <span id="theme-icon">🌙</span>
+            </button>
+        </div>
+        <nav class="space-y-4">
+            <a href="/" class="flex items-center gap-3 px-4 py-3 rounded-xl text-slate-600 dark:text-slate-400 hover:text-cyan-600 dark:hover:text-cyan-300 transition">
+                <span>🏠</span> Landing Page
+            </a>
+            <a href="/index" class="flex items-center gap-3 px-4 py-3 rounded-xl {{ 'text-cyan-600 dark:text-cyan-400 font-bold shadow-inner' if active == 'dashboard' else 'text-slate-600 dark:text-slate-400 hover:text-cyan-600 dark:hover:text-cyan-300 transition' }}">
+                <span>📊</span> Dashboard
+            </a>
+            <a href="/chat" class="flex items-center gap-3 px-4 py-3 rounded-xl {{ 'text-cyan-600 dark:text-cyan-400 font-bold shadow-inner' if active == 'chat' else 'text-slate-600 dark:text-slate-400 hover:text-cyan-600 dark:hover:text-cyan-300 transition' }}">
+                <span>💬</span> AI Assistant
+            </a>
+            <a href="/news" class="flex items-center gap-3 px-4 py-3 rounded-xl {{ 'text-cyan-600 dark:text-cyan-400 font-bold shadow-inner' if active == 'news' else 'text-slate-600 dark:text-slate-400 hover:text-cyan-600 dark:hover:text-cyan-300 transition' }}">
+                <span>📰</span> Cyber News
+            </a>
+            <a href="/history" class="flex items-center gap-3 px-4 py-3 rounded-xl {{ 'text-cyan-600 dark:text-cyan-400 font-bold shadow-inner' if active == 'news' else 'text-slate-600 dark:text-slate-400 hover:text-cyan-600 dark:hover:text-cyan-300 transition' }}">
+                <span>📜</span> History
+            </a>
+        </nav>
+    </div>
+    <div class="p-6 border-t border-slate-300 dark:border-slate-800/60 text-xs text-slate-500">
+        IDS v1.0 • Active Node
+    </div>
+</aside>
+
+<script>
+    // Sync sidebar background and theme icon based on current root class
+    document.addEventListener("DOMContentLoaded", () => {
+        const isLight = !document.documentElement.classList.contains('dark');
+        const icon = document.getElementById('theme-icon');
+        if (icon) icon.innerText = isLight ? '☀️' : '🌙';
+        
+        const aside = document.currentScript.previousElementSibling;
+        if (aside && isLight) {
+            aside.style.backgroundColor = '#f1f5f9';
+        }
+    });
+
+    // Extended global toggle function to dynamically update sidebar background
+    if (typeof window.toggleTheme !== 'function') {
+        window.toggleTheme = function() {
+            const html = document.documentElement;
+            const icon = document.getElementById('theme-icon');
+            const asideTag = document.querySelector('aside');
+            
+            if (html.classList.contains('dark')) {
+                html.classList.remove('dark');
+                if (icon) icon.innerText = '☀️';
+                if (asideTag) asideTag.style.backgroundColor = '#f1f5f9';
+                localStorage.setItem('theme', 'light');
+            } else {
+                html.classList.add('dark');
+                if (icon) icon.innerText = '🌙';
+                if (asideTag) asideTag.style.backgroundColor = '#0f172a';
+                localStorage.setItem('theme', 'dark');
+            }
+        }
+    }
+</script>

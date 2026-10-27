@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>XAI-Sentinel | AI Security Assistant</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = { darkMode: 'class' }
+    </script>
+    <style>
+        .neu-card { background: #0f172a; box-shadow: 8px 8px 16px #070a11, -8px -8px 16px #172443; border-radius: 1rem; }
+        .neu-card-inset { background: #0f172a; box-shadow: inset 4px 4px 8px #070a11, inset -4px -4px 8px #172443; border-radius: 0.75rem; }
+        .neu-btn { background: #0f172a; box-shadow: 4px 4px 8px #070a11, -4px -4px 8px #172443; transition: all 0.2s ease; }
+        .neu-btn:hover { box-shadow: 2px 2px 4px #070a11, -2px -2px 4px #172443; }
+
+        /* Light Mode Adjustments */
+        html:not(.dark) body { background-color: #e2e8f0; color: #1e293b; }
+        html:not(.dark) .neu-card { background: #f1f5f9; box-shadow: 8px 8px 16px #cbd5e1, -8px -8px 16px #ffffff; }
+        html:not(.dark) .neu-card-inset { background: #f1f5f9; box-shadow: inset 4px 4px 8px #cbd5e1, inset -4px -4px 8px #ffffff; }
+        html:not(.dark) .neu-btn { background: #f1f5f9; box-shadow: 4px 4px 8px #cbd5e1, -4px -4px 8px #ffffff; }
+    </style>
+</head>
+<body class="bg-[#0f172a] text-slate-100 min-h-screen flex font-sans transition-colors duration-300">
+
+    {% include 'sidepanel.html' %}
+
+    <main class="flex-1 flex flex-col h-screen">
+        <header class="neu-card m-6 mb-0 p-4 flex justify-between items-center">
+            <h1 class="text-lg font-bold text-slate-800 dark:text-slate-200">🤖 Security Intelligence Chatbot</h1>
+            <span class="text-xs font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 rounded-full">Groq API Connected</span>
+        </header>
+
+        <div id="chat-container" class="flex-1 overflow-y-auto p-6 space-y-4">
+            <div class="flex items-start space-x-3">
+                <div class="neu-btn text-cyan-600 dark:text-cyan-400 font-bold rounded-full h-9 w-9 flex items-center justify-center shrink-0 text-xs">AI</div>
+                <div class="neu-card p-4 max-w-xl text-slate-700 dark:text-slate-300 text-sm shadow-md">
+                    Hello! I am your XAI-Sentinel security assistant powered by Groq. Ask me anything about network monitoring, analyzing attack types, or interpreting your traffic dashboard.
+                </div>
+            </div>
+        </div>
+
+        <div class="p-6">
+            <form id="chat-form" class="max-w-4xl mx-auto flex gap-3">
+                <input type="text" id="user-input" placeholder="Ask about network security or threat logs..." class="flex-1 neu-card-inset px-4 py-3 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:border-cyan-500" autocomplete="off" required>
+                <button type="submit" id="send-btn" class="neu-btn px-6 py-3 rounded-xl text-sm font-bold text-cyan-600 dark:text-cyan-400 transition">Send</button>
+            </form>
+        </div>
+    </main>
+
+    <script>
+        if (localStorage.getItem('theme') === 'light') {
+            document.documentElement.classList.remove('dark');
+        }
+
+        const chatContainer = document.getElementById('chat-container');
+        const chatForm = document.getElementById('chat-form');
+        const userInput = document.getElementById('user-input');
+        const sendBtn = document.getElementById('send-btn');
+
+        chatForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const message = userInput.value.trim();
+            if (!message) return;
+
+            appendMessage(message, 'user');
+            userInput.value = '';
+            userInput.disabled = true;
+            sendBtn.disabled = true;
+
+            const loadingId = 'loading-' + Date.now();
+            const loadingDiv = document.createElement('div');
+            loadingDiv.id = loadingId;
+            loadingDiv.className = 'flex items-start space-x-3';
+            loadingDiv.innerHTML = `<div class="neu-btn text-cyan-600 dark:text-cyan-400 font-bold rounded-full h-9 w-9 flex items-center justify-center shrink-0 text-xs">AI</div><div class="neu-card p-4 text-slate-500 dark:text-slate-400 text-sm animate-pulse">Thinking via Groq API...</div>`;
+            chatContainer.appendChild(loadingDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+
+            try {
+                const response = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: message })
+                });
+                const data = await response.json();
+                document.getElementById(loadingId).remove();
+                appendMessage(data.response, 'ai');
+            } catch (err) {
+                document.getElementById(loadingId).remove();
+                appendMessage('Error: Could not reach the server.', 'ai');
+            } finally {
+                userInput.disabled = false;
+                sendBtn.disabled = false;
+                userInput.focus();
+            }
+        });
+
+        function appendMessage(text, sender) {
+            const isUser = sender === 'user';
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `flex items-start space-x-3 ${isUser ? 'flex-row-reverse space-x-reverse' : ''}`;
+            messageDiv.innerHTML = `
+                <div class="neu-btn ${isUser ? 'text-indigo-600 dark:text-indigo-400' : 'text-cyan-600 dark:text-cyan-400'} font-bold rounded-full h-9 w-9 flex items-center justify-center shrink-0 text-xs">${isUser ? 'You' : 'AI'}</div>
+                <div class="neu-card p-4 max-w-xl text-sm whitespace-pre-wrap ${isUser ? 'text-cyan-900 dark:text-cyan-100' : 'text-slate-700 dark:text-slate-300'}">${text}</div>
+            `;
+            chatContainer.appendChild(messageDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+    </script>
+</body>
+</html>

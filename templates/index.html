@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>XAI-Sentinel | Intrusion Detection Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        tailwind.config = { darkMode: 'class' }
+    </script>
+    <style>
+        .neu-card { background: #0f172a; box-shadow: 8px 8px 16px #070a11, -8px -8px 16px #172443; border-radius: 1rem; }
+        .neu-btn { background: #0f172a; box-shadow: 4px 4px 8px #070a11, -4px -4px 8px #172443; transition: all 0.2s ease; }
+        .neu-btn:hover { box-shadow: 2px 2px 4px #070a11, -2px -2px 4px #172443; }
+
+        /* Light Mode Adjustments */
+        html:not(.dark) body { background-color: #e2e8f0; color: #1e293b; }
+        html:not(.dark) .neu-card { background: #f1f5f9; box-shadow: 8px 8px 16px #cbd5e1, -8px -8px 16px #ffffff; }
+        html:not(.dark) .neu-btn { background: #f1f5f9; box-shadow: 4px 4px 8px #cbd5e1, -4px -4px 8px #ffffff; }
+    </style>
+</head>
+<body class="bg-[#0f172a] text-slate-100 min-h-screen flex font-sans transition-colors duration-300">
+
+    {% include 'sidepanel.html' %}
+
+    <main class="flex-1 p-6 md:p-8 overflow-y-auto space-y-6">
+        <header class="neu-card p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div>
+                <h1 class="text-2xl font-black text-cyan-400">Network Intrusion Detector</h1>
+                <p class="text-slate-400 dark:text-slate-400 text-sm mt-1">Real-time Malicious Traffic Monitoring & Anomaly Detection</p>
+            </div>
+            <div class="flex items-center gap-3">
+                <button onclick="generateAISummary()" class="neu-btn px-4 py-2.5 rounded-xl text-xs font-bold text-indigo-400 flex items-center gap-2">
+                    🤖 Generate AI Summary
+                </button>
+                <a href="/api/download-pdf" class="neu-btn px-4 py-2.5 rounded-xl text-xs font-bold text-cyan-400 flex items-center gap-2">
+                    📥 Download PDF Report
+                </a>
+            </div>
+        </header>
+
+        <!-- AI Summary Modal -->
+        <div id="ai-summary-box" class="hidden neu-card p-6 border border-indigo-500/20 relative">
+            <div class="flex justify-between items-center mb-3">
+                <h3 class="text-md font-bold text-indigo-400 flex items-center gap-2">✨ Groq AI Incident Summary</h3>
+                <button onclick="closeSummary()" class="text-slate-400 hover:text-white text-xs neu-btn px-3 py-1 rounded-lg">✕ Close</button>
+            </div>
+            <div id="ai-summary-content" class="text-sm text-slate-300 dark:text-slate-300 whitespace-pre-wrap leading-relaxed animate-pulse">
+                Analyzing recent packets and threats...
+            </div>
+        </div>
+
+        <!-- Stat Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div class="neu-card p-6">
+                <p class="text-slate-400 text-xs font-semibold uppercase tracking-wider">Total Packets Inspected</p>
+                <h2 id="total-packets" class="text-3xl font-black text-slate-900 dark:text-white mt-2">0</h2>
+            </div>
+            <div class="neu-card p-6">
+                <p class="text-slate-400 text-xs font-semibold uppercase tracking-wider">Benign Traffic</p>
+                <h2 id="benign-count" class="text-3xl font-black text-emerald-400 mt-2">0</h2>
+            </div>
+            <div class="neu-card p-6">
+                <p class="text-slate-400 text-xs font-semibold uppercase tracking-wider">Malicious Threats Detected</p>
+                <h2 id="malicious-count" class="text-3xl font-black text-rose-500 mt-2">0</h2>
+            </div>
+        </div>
+
+        <!-- XAI Feature Importance Section -->
+        <div id="xai-section" class="hidden neu-card p-6 space-y-4">
+            <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+                <h3 class="text-md font-bold text-cyan-400 flex items-center gap-2">
+                    🔍 Explainable AI (XAI) Feature Importance Breakdown
+                </h3>
+                <button onclick="closeXAI()" class="text-slate-400 hover:text-white text-xs neu-btn px-3 py-1 rounded-lg">✕ Close</button>
+            </div>
+            <p class="text-xs text-slate-400">
+                Displaying Integrated Gradients attribution weights showing which packet features influenced the model's decision.
+            </p>
+            <div class="h-72 relative">
+                <canvas id="xaiChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Charts Row -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div class="neu-card p-6 flex flex-col justify-between">
+                <h3 class="text-md font-bold mb-4 text-slate-800 dark:text-slate-200">Traffic Distribution</h3>
+                <div class="h-64 flex justify-center items-center">
+                    <canvas id="trafficChart"></canvas>
+                </div>
+            </div>
+
+            <div class="lg:col-span-2 neu-card p-6 flex flex-col justify-between">
+                <h3 class="text-md font-bold mb-4 text-cyan-400">📈 Real-Time Traffic Volume Timeline</h3>
+                <div class="h-64 flex justify-center items-center">
+                    <canvas id="timelineChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Active Threat Alerts Feed -->
+        <div class="neu-card p-6">
+            <h3 class="text-md font-bold mb-4 text-rose-400">⚠️ Active Threat Alerts Feed</h3>
+            <div class="overflow-y-auto max-h-64 pr-2">
+                <table class="w-full text-left text-xs text-slate-700 dark:text-slate-300">
+                    <thead class="text-slate-500 dark:text-slate-400 uppercase">
+                        <tr>
+                            <th class="p-3">Date & Time</th>
+                            <th class="p-3">Source IP</th>
+                            <th class="p-3">Target IP</th>
+                            <th class="p-3">Proto</th>
+                            <th class="p-3">Reason</th>
+                            <th class="p-3 text-right">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="alerts-table" class="divide-y divide-slate-300 dark:divide-slate-800/50"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Recent Packets Log -->
+        <div class="neu-card p-6">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-3">
+                <h3 class="text-md font-bold text-cyan-400">📡 Live Packet Stream</h3>
+                <div class="flex space-x-2 text-xs">
+                    <button onclick="setFilter('ALL')" id="filter-all" class="neu-btn px-3 py-1.5 rounded-lg text-cyan-300 font-semibold">All</button>
+                    <button onclick="setFilter('Benign')" id="filter-benign" class="neu-btn px-3 py-1.5 rounded-lg text-slate-500 dark:text-slate-400">Benign Only</button>
+                    <button onclick="setFilter('Malicious')" id="filter-malicious" class="neu-btn px-3 py-1.5 rounded-lg text-slate-500 dark:text-slate-400">Malicious Only</button>
+                </div>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-sm text-slate-700 dark:text-slate-300">
+                    <thead class="text-slate-500 dark:text-slate-400 text-xs uppercase">
+                        <tr>
+                            <th class="p-3">Date & Time</th>
+                            <th class="p-3">Source IP</th>
+                            <th class="p-3">Destination IP</th>
+                            <th class="p-3">Protocol</th>
+                            <th class="p-3">Size (Bytes)</th>
+                            <th class="p-3">Classification</th>
+                        </tr>
+                    </thead>
+                    <tbody id="packets-table" class="divide-y divide-slate-300 dark:divide-slate-800/50"></tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        if (localStorage.getItem('theme') === 'light') {
+            document.documentElement.classList.remove('dark');
+        }
+
+        let currentFilter = 'ALL';
+        let latestPacketsData = [];
+        let xaiChartInstance = null;
+
+        function formatDateTime(timeStr) {
+            if (!timeStr) return '';
+            if (timeStr.includes('-') || (timeStr.includes(' ') && timeStr.length > 8)) {
+                return timeStr;
+            }
+            const today = new Date().toISOString().split('T')[0];
+            return `${today} ${timeStr}`;
+        }
+
+        function setFilter(filter) {
+            currentFilter = filter;
+            ['all', 'benign', 'malicious'].forEach(f => {
+                const btn = document.getElementById(`filter-${f}`);
+                if (btn) {
+                    btn.style.color = (f.toUpperCase() === filter || (filter === 'ALL' && f === 'all')) ? '#38bdf8' : '#94a3b8';
+                }
+            });
+            renderPackets();
+        }
+
+        async function generateAISummary() {
+            const box = document.getElementById('ai-summary-box');
+            const content = document.getElementById('ai-summary-content');
+            box.classList.remove('hidden');
+            content.innerText = "Querying Groq AI for security insights...";
+            content.classList.add('animate-pulse');
+
+            try {
+                const res = await fetch('/api/ai-summary', { method: 'POST' });
+                const data = await res.json();
+                content.classList.remove('animate-pulse');
+                content.innerText = data.summary;
+            } catch (err) {
+                content.classList.remove('animate-pulse');
+                content.innerText = "Error communicating with AI service.";
+            }
+        }
+
+        function closeSummary() {
+            document.getElementById('ai-summary-box').classList.add('hidden');
+        }
+
+        const ctx = document.getElementById('trafficChart').getContext('2d');
+        const trafficChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Benign', 'Malicious'],
+                datasets: [{ data: [0, 0], backgroundColor: ['#10b981', '#f43f5e'], borderWidth: 0 }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#94a3b8' } } } }
+        });
+
+        const timelineCtx = document.getElementById('timelineChart').getContext('2d');
+        const timelineChart = new Chart(timelineCtx, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [
+                    { label: 'Total Packets', data: [], borderColor: '#38bdf8', backgroundColor: 'rgba(56, 189, 248, 0.1)', borderWidth: 2, tension: 0.4, fill: true },
+                    { label: 'Malicious Threats', data: [], borderColor: '#f43f5e', backgroundColor: 'rgba(244, 63, 94, 0.1)', borderWidth: 2, tension: 0.4, fill: true }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { labels: { color: '#94a3b8' } } },
+                scales: {
+                    x: { grid: { color: 'rgba(51, 65, 85, 0.3)' }, ticks: { color: '#94a3b8', font: { size: 10 } } },
+                    y: { grid: { color: 'rgba(51, 65, 85, 0.3)' }, ticks: { color: '#94a3b8' } }
+                }
+            }
+        });
+
+        function renderPackets() {
+            const packetsTable = document.getElementById('packets-table');
+            const filtered = latestPacketsData.filter(p => currentFilter === 'ALL' || p.status === currentFilter);
+            packetsTable.innerHTML = filtered.map(p => `
+                <tr class="hover:bg-slate-200/50 dark:hover:bg-slate-800/30 transition">
+                    <td class="p-3 text-slate-500 dark:text-slate-400 font-mono text-xs">${formatDateTime(p.timestamp)}</td>
+                    <td class="p-3 font-mono text-cyan-600 dark:text-cyan-300">${p.src_ip}</td>
+                    <td class="p-3 font-mono text-blue-600 dark:text-blue-300">${p.dst_ip}</td>
+                    <td class="p-3">${p.protocol}</td>
+                    <td class="p-3">${p.length}</td>
+                    <td class="p-3">
+                        <span class="px-2.5 py-1 text-xs font-bold rounded-full ${p.status === 'Malicious' ? 'bg-rose-500/20 text-rose-500 dark:text-rose-400 border border-rose-500/30' : 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30'}">
+                            ${p.status}
+                        </span>
+                    </td>
+                </tr>
+            `).join('') || `<tr><td colspan="6" class="p-4 text-center text-slate-500">No packets found.</td></tr>`;
+        }
+
+        async function fetchStats() {
+            try {
+                const res = await fetch('/api/stats');
+                const data = await res.json();
+                document.getElementById('total-packets').innerText = data.total_packets.toLocaleString();
+                document.getElementById('benign-count').innerText = data.benign_count.toLocaleString();
+                document.getElementById('malicious-count').innerText = data.malicious_count.toLocaleString();
+                
+                trafficChart.data.datasets[0].data = [data.benign_count, data.malicious_count];
+                trafficChart.update();
+
+                const nowLabel = new Date().toLocaleTimeString();
+                if (timelineChart.data.labels.length > 12) {
+                    timelineChart.data.labels.shift();
+                    timelineChart.data.datasets[0].data.shift();
+                    timelineChart.data.datasets[1].data.shift();
+                }
+                timelineChart.data.labels.push(nowLabel);
+                timelineChart.data.datasets[0].data.push(data.total_packets);
+                timelineChart.data.datasets[1].data.push(data.malicious_count);
+                timelineChart.update();
+
+                document.getElementById('alerts-table').innerHTML = data.alerts.map((a, index) => `
+                    <tr class="hover:bg-rose-100 dark:hover:bg-rose-950/20 transition">
+                        <td class="p-3 text-slate-500 dark:text-slate-400 font-mono text-xs">${formatDateTime(a.timestamp)}</td>
+                        <td class="p-3 font-mono text-rose-600 dark:text-rose-300">${a.src_ip}</td>
+                        <td class="p-3 font-mono text-rose-600 dark:text-rose-300">${a.dst_ip}</td>
+                        <td class="p-3">${a.protocol}</td>
+                        <td class="p-3 font-semibold text-rose-700 dark:text-rose-200">${a.reason}</td>
+                        <td class="p-3 text-right">
+                            <button onclick="inspectThreatXAI(${index})" class="neu-btn px-3 py-1 rounded-lg text-xs font-bold text-cyan-600 dark:text-cyan-300">
+                                🔍 Inspect XAI
+                            </button>
+                        </td>
+                    </tr>
+                `).join('') || '<tr><td colspan="6" class="p-4 text-center text-slate-500">No malicious threats detected.</td></tr>';
+
+                latestPacketsData = data.recent_packets;
+                renderPackets();
+            } catch (err) { console.error(err); }
+        }
+
+        async function inspectThreatXAI(alertIndex) {
+            const xaiSection = document.getElementById('xai-section');
+            xaiSection.classList.remove('hidden');
+            xaiSection.scrollIntoView({ behavior: 'smooth' });
+
+            try {
+                const response = await fetch('/api/explain', { method: 'POST' });
+                const data = await response.json();
+
+                if (data.error) {
+                    alert("XAI Notice: " + data.error);
+                    return;
+                }
+
+                renderXAIChart(data.features, data.importances);
+            } catch (err) {
+                console.error("Failed to fetch XAI explanation:", err);
+            }
+        }
+
+        function renderXAIChart(labels, dataValues) {
+            const ctx = document.getElementById('xaiChart').getContext('2d');
+            if (xaiChartInstance) { xaiChartInstance.destroy(); }
+
+            xaiChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: dataValues,
+                        backgroundColor: dataValues.map(v => v >= 0 ? 'rgba(14, 165, 233, 0.7)' : 'rgba(244, 63, 94, 0.7)'),
+                        borderColor: dataValues.map(v => v >= 0 ? '#0ea5e9' : '#f43f5e'),
+                        borderWidth: 1,
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { grid: { color: 'rgba(51, 65, 85, 0.3)' }, ticks: { color: '#94a3b8' } },
+                        y: { grid: { display: false }, ticks: { color: '#94a3b8', font: { size: 10 } } }
+                    }
+                }
+            });
+        }
+
+        function closeXAI() {
+            document.getElementById('xai-section').classList.add('hidden');
+            if (xaiChartInstance) { xaiChartInstance.destroy(); xaiChartInstance = null; }
+        }
+
+        setInterval(fetchStats, 1500);
+        fetchStats();
+    </script>
+</body>
+</html>

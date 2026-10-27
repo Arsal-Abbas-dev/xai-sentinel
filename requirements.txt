@@ -1,0 +1,9 @@
+scapy
+flask
+pandas
+torch
+scikit-learn
+groq
+reportlab
+captum
+requests

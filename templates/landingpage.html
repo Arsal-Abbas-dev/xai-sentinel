@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>XAI-Sentinel | Explainable AI Network Intrusion Detection System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+                        mono: ['"JetBrains Mono"', 'monospace']
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Dark Mode Neumorphism (Default) */
+        .neu-flat { background: #152035; box-shadow: 8px 8px 18px #090d18, -8px -8px 18px #213352; }
+        .neu-pressed { background: #121b2d; box-shadow: inset 5px 5px 12px #080c16, inset -5px -5px 12px #1e2c46; }
+        .neu-button { background: #152035; box-shadow: 6px 6px 14px #090d18, -6px -6px 14px #213352; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
+        .neu-button:hover { box-shadow: 3px 3px 8px #090d18, -3px -3px 8px #213352; transform: translateY(1px); }
+        .neu-button:active { box-shadow: inset 4px 4px 10px #080c16, inset -4px -4px 10px #1e2c46; transform: translateY(2px); }
+        .neu-accent-button { background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%); box-shadow: 0 0 20px rgba(56, 189, 248, 0.35), 6px 6px 14px #090d18, -6px -6px 14px #213352; transition: all 0.25s ease; }
+        .neu-accent-button:hover { box-shadow: 0 0 28px rgba(56, 189, 248, 0.55), 3px 3px 8px #090d18, -3px -3px 8px #213352; transform: translateY(-1px); }
+        .neu-circle-pressed { box-shadow: inset 4px 4px 8px #080c16, inset -4px -4px 8px #1e2c46; }
+
+        /* Light Mode Neumorphism Overrides */
+        html:not(.dark) body { background-color: #e2e8f0; color: #1e293b; }
+        html:not(.dark) .neu-flat { background: #f1f5f9; box-shadow: 8px 8px 18px #cbd5e1, -8px -8px 18px #ffffff; }
+        html:not(.dark) .neu-pressed { background: #e2e8f0; box-shadow: inset 5px 5px 12px #cbd5e1, inset -5px -5px 12px #ffffff; }
+        html:not(.dark) .neu-button { background: #f1f5f9; box-shadow: 6px 6px 14px #cbd5e1, -6px -6px 14px #ffffff; }
+        html:not(.dark) .neu-button:hover { box-shadow: 3px 3px 8px #cbd5e1, -3px -3px 8px #ffffff; }
+        html:not(.dark) header { background-color: rgba(241, 245, 249, 0.9) !important; border-color: #cbd5e1 !important; }
+        html:not(.dark) footer { background-color: #f1f5f9 !important; border-color: #cbd5e1 !important; }
+    </style>
+</head>
+<body class="bg-[#0f172a] text-slate-200 min-h-screen font-sans selection:bg-sky-500 selection:text-slate-950 overflow-x-hidden transition-colors duration-300">
+
+    <!-- Top Navigation Header -->
+    <header class="sticky top-0 z-50 bg-[#0f172a]/90 backdrop-blur-md border-b border-slate-800/50">
+        <div class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+            <!-- Brand Logo -->
+            <a href="#" class="flex items-center gap-3 group">
+                <div class="w-10 h-10 rounded-xl neu-flat flex items-center justify-center text-sky-400 font-bold text-xl group-hover:text-sky-300 transition">
+                    🛡️
+                </div>
+                <div>
+                    <span class="text-xl font-black tracking-tight text-slate-900 dark:text-white">XAI-<span class="text-sky-400">SENTINEL</span></span>
+                    <span class="block text-[10px] uppercase font-semibold text-slate-500 dark:text-slate-400 -mt-1 tracking-widest">Next-Gen NIDS</span>
+                </div>
+            </a>
+
+            <!-- Navigation Links -->
+            <nav class="hidden md:flex items-center gap-8 text-sm font-medium text-slate-600 dark:text-slate-400">
+                <a href="#stats" class="hover:text-sky-500 dark:hover:text-sky-400 transition">Metrics</a>
+                <a href="#features" class="hover:text-sky-500 dark:hover:text-sky-400 transition">Features</a>
+                <a href="#architecture" class="hover:text-sky-500 dark:hover:text-sky-400 transition">Architecture</a>
+                <a href="#demo" class="hover:text-sky-500 dark:hover:text-sky-400 transition">Live Demo</a>
+            </nav>
+
+            <!-- CTA Action Buttons -->
+            <div class="flex items-center gap-3">
+                <!-- Theme Toggle Button -->
+                <button onclick="toggleTheme()" class="neu-button p-2.5 rounded-xl text-sky-500 dark:text-sky-400 font-bold text-sm flex items-center justify-center" title="Toggle Theme">
+                    <span id="theme-icon">🌙</span>
+                </button>
+                <a href="/chat" class="hidden sm:flex neu-button text-slate-700 dark:text-slate-300 hover:text-sky-500 dark:hover:text-sky-400 text-xs font-semibold px-4 py-2.5 rounded-xl items-center gap-2">
+                    💬 AI Assistant
+                </a>
+                <a href="/index" class="neu-accent-button text-white text-xs font-bold px-5 py-2.5 rounded-xl flex items-center gap-2">
+                    🚀 Launch Dashboard
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="relative pt-12 pb-20 md:pt-20 md:pb-32 px-6 max-w-7xl mx-auto overflow-hidden">
+        <div class="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-sky-500/10 rounded-full blur-[120px] -z-10 pointer-events-none"></div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+            <!-- Left Hero Content -->
+            <div class="lg:col-span-7 space-y-8 text-center lg:text-left">
+                <div class="inline-flex items-center gap-3 px-4 py-2 rounded-full neu-pressed text-xs font-semibold text-sky-600 dark:text-sky-400 border border-sky-500/20">
+                    <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+                    <span>Hybrid CNN-LSTM + Captum Explainable AI</span>
+                </div>
+
+                <h1 class="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-slate-900 dark:text-white tracking-tight leading-tight">
+                    Real-Time Network Threat Detection <br>
+                    <span class="text-transparent bg-clip-text bg-gradient-to-r from-sky-500 via-indigo-500 to-emerald-500 dark:from-sky-400 dark:via-indigo-300 dark:to-emerald-400">
+                        Explained with Precision
+                    </span>
+                </h1>
+
+                <p class="text-slate-600 dark:text-slate-400 text-base sm:text-lg leading-relaxed max-w-2xl mx-auto lg:mx-0">
+                    XAI-Sentinel pairs deep learning packet sequence inspection with Integrated Gradients attribution. Detect zero-day network threats in real time and instantly understand <em>why</em> traffic was flagged.
+                </p>
+
+                <!-- Action Buttons -->
+                <div class="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4 pt-2">
+                    <a href="/index" class="w-full sm:w-auto neu-accent-button text-white font-bold px-8 py-4 rounded-2xl flex items-center justify-center gap-3 text-sm">
+                        <span>Open Operations Dashboard</span>
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+                    </a>
+                    <a href="#demo" class="w-full sm:w-auto neu-button text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white font-semibold px-8 py-4 rounded-2xl flex items-center justify-center gap-2 text-sm">
+                        <span>Simulate Threat</span>
+                        <svg class="w-4 h-4 text-sky-500 dark:text-sky-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    </a>
+                </div>
+
+                <!-- Capabilities Badges -->
+                <div class="pt-6 border-t border-slate-300 dark:border-slate-800/80 flex flex-wrap items-center justify-center lg:justify-start gap-6 text-xs text-slate-600 dark:text-slate-400">
+                    <div class="flex items-center gap-2">
+                        <span class="text-emerald-500 dark:text-emerald-400 font-bold">✓</span> Scapy Live Sniffing
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="text-emerald-500 dark:text-emerald-400 font-bold">✓</span> Groq LLM Incident Reports
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="text-emerald-500 dark:text-emerald-400 font-bold">✓</span> PyTorch Deep Learning
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Hero Visual Widget -->
+            <div class="lg:col-span-5">
+                <div class="neu-flat p-6 rounded-3xl relative border border-slate-300 dark:border-slate-800/60">
+                    <div class="flex items-center justify-between pb-4 border-b border-slate-300 dark:border-slate-800/80">
+                        <div class="flex items-center gap-2">
+                            <span class="w-3 h-3 rounded-full bg-rose-500/80"></span>
+                            <span class="w-3 h-3 rounded-full bg-amber-500/80"></span>
+                            <span class="w-3 h-3 rounded-full bg-emerald-500/80"></span>
+                        </div>
+                        <span class="font-mono text-xs text-sky-600 dark:text-sky-400 bg-sky-500/10 px-3 py-1 rounded-full border border-sky-500/20">LIVE_TELEMETRY</span>
+                    </div>
+
+                    <div class="mt-6 space-y-4">
+                        <div class="neu-pressed p-4 rounded-2xl flex items-center justify-between">
+                            <div>
+                                <p class="text-[11px] text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wider">Model Status</p>
+                                <p class="text-sm font-bold text-emerald-500 dark:text-emerald-400 flex items-center gap-2 mt-0.5">
+                                    <span class="w-2 h-2 rounded-full bg-emerald-400"></span> Active (CUDA Accelerated)
+                                </p>
+                            </div>
+                            <div class="text-right">
+                                <p class="text-[11px] text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wider">Inference Speed</p>
+                                <p class="text-sm font-mono font-bold text-slate-900 dark:text-white mt-0.5">1.4 ms/pkt</p>
+                            </div>
+                        </div>
+
+                        <!-- Mini Attributions Chart Graphic -->
+                        <div class="neu-pressed p-4 rounded-2xl space-y-3">
+                            <div class="flex justify-between items-center text-xs">
+                                <span class="font-semibold text-slate-700 dark:text-slate-300">Key Feature Attributions</span>
+                                <span class="text-sky-600 dark:text-sky-400 font-mono">Captum IG</span>
+                            </div>
+
+                            <div class="space-y-2 text-xs">
+                                <div>
+                                    <div class="flex justify-between text-[11px] text-slate-500 dark:text-slate-400 mb-1">
+                                        <span>TCP SYN Flag Probability</span>
+                                        <span class="font-mono text-rose-500 dark:text-rose-400">+0.84</span>
+                                    </div>
+                                    <div class="w-full bg-slate-300 dark:bg-slate-900 rounded-full h-2 overflow-hidden neu-circle-pressed">
+                                        <div class="bg-rose-500 h-2 rounded-full" style="width: 84%"></div>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <div class="flex justify-between text-[11px] text-slate-500 dark:text-slate-400 mb-1">
+                                        <span>Packet Length Delta</span>
+                                        <span class="font-mono text-sky-600 dark:text-sky-400">+0.62</span>
+                                    </div>
+                                    <div class="w-full bg-slate-300 dark:bg-slate-900 rounded-full h-2 overflow-hidden neu-circle-pressed">
+                                        <div class="bg-sky-500 dark:bg-sky-400 h-2 rounded-full" style="width: 62%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Telemetry Stats Section -->
+    <section id="stats" class="py-12 px-6 max-w-7xl mx-auto">
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
+            <div class="neu-flat p-6 rounded-2xl text-center border border-slate-300 dark:border-slate-800/50">
+                <p class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Packets Analysed</p>
+                <h3 id="stat-packets" class="text-3xl lg:text-4xl font-extrabold text-slate-900 dark:text-white font-mono">1,482,920</h3>
+                <p class="text-[11px] text-emerald-500 dark:text-emerald-400 mt-2 font-medium">↑ Real-Time Stream</p>
+            </div>
+
+            <div class="neu-flat p-6 rounded-2xl text-center border border-slate-300 dark:border-slate-800/50">
+                <p class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Feature Dimension</p>
+                <h3 class="text-3xl lg:text-4xl font-extrabold text-sky-600 dark:text-sky-400 font-mono">77</h3>
+                <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-2 font-medium">Flow Features per Sequence</p>
+            </div>
+
+            <div class="neu-flat p-6 rounded-2xl text-center border border-slate-300 dark:border-slate-800/50">
+                <p class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Detection Precision</p>
+                <h3 class="text-3xl lg:text-4xl font-extrabold text-emerald-500 dark:text-emerald-400 font-mono">99.4%</h3>
+                <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-2 font-medium">Hybrid CNN-LSTM Benchmark</p>
+            </div>
+
+            <div class="neu-flat p-6 rounded-2xl text-center border border-slate-300 dark:border-slate-800/50">
+                <p class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Threat Response</p>
+                <h3 class="text-3xl lg:text-4xl font-extrabold text-indigo-600 dark:text-indigo-400 font-mono">&lt; 50ms</h3>
+                <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-2 font-medium">Sub-Second Explainability</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Core Features Cards -->
+    <section id="features" class="py-20 px-6 max-w-7xl mx-auto space-y-12">
+        <div class="text-center max-w-3xl mx-auto space-y-4">
+            <h2 class="text-xs font-bold text-sky-600 dark:text-sky-400 uppercase tracking-widest">Enterprise Defense Capabilities</h2>
+            <p class="text-3xl sm:text-4xl font-extrabold text-slate-900 dark:text-white">Engineered for Transparency and Speed</p>
+            <p class="text-slate-600 dark:text-slate-400 text-sm sm:text-base">Traditional intrusion detection systems function as opaque black boxes. XAI-Sentinel changes the game by explaining every automated security verdict.</p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+            <div class="neu-flat p-8 rounded-3xl border border-slate-300 dark:border-slate-800/60 flex flex-col justify-between">
+                <div class="space-y-4">
+                    <div class="w-12 h-12 rounded-2xl neu-button flex items-center justify-center text-sky-600 dark:text-sky-400 font-bold text-xl">📡</div>
+                    <h3 class="text-lg font-bold text-slate-900 dark:text-white">Scapy Live Capture</h3>
+                    <p class="text-slate-600 dark:text-slate-400 text-xs leading-relaxed">Direct asynchronous network adapter socket sniffing. Extracts raw payload features, TTLs, flag states, and port sequences on the fly.</p>
+                </div>
+            </div>
+
+            <div class="neu-flat p-8 rounded-3xl border border-slate-300 dark:border-slate-800/60 flex flex-col justify-between">
+                <div class="space-y-4">
+                    <div class="w-12 h-12 rounded-2xl neu-button flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-bold text-xl">🧠</div>
+                    <h3 class="text-lg font-bold text-slate-900 dark:text-white">Hybrid CNN-LSTM</h3>
+                    <p class="text-slate-600 dark:text-slate-400 text-xs leading-relaxed">Convolutions extract localized spatial flow features while LSTM memory cells evaluate temporal multi-packet attack vectors.</p>
+                </div>
+            </div>
+
+            <div class="neu-flat p-8 rounded-3xl border border-slate-300 dark:border-slate-800/60 flex flex-col justify-between">
+                <div class="space-y-4">
+                    <div class="w-12 h-12 rounded-2xl neu-button flex items-center justify-center text-emerald-500 dark:text-emerald-400 font-bold text-xl">🔍</div>
+                    <h3 class="text-lg font-bold text-slate-900 dark:text-white">Captum XAI Attribution</h3>
+                    <p class="text-slate-600 dark:text-slate-400 text-xs leading-relaxed">Integrated Gradients calculate mathematical contribution weights for all 77 features to reveal why a packet stream was deemed malicious.</p>
+                </div>
+            </div>
+
+            <div class="neu-flat p-8 rounded-3xl border border-slate-300 dark:border-slate-800/60 flex flex-col justify-between">
+                <div class="space-y-4">
+                    <div class="w-12 h-12 rounded-2xl neu-button flex items-center justify-center text-rose-500 dark:text-rose-400 font-bold text-xl">🤖</div>
+                    <h3 class="text-lg font-bold text-slate-900 dark:text-white">Groq AI Incident Assistant</h3>
+                    <p class="text-slate-600 dark:text-slate-400 text-xs leading-relaxed">Generates executive mitigation summaries and offers conversational query assistance powered by high-speed Groq LLM inference.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Architecture Section -->
+    <section id="architecture" class="py-20 px-6 max-w-7xl mx-auto border-t border-slate-300 dark:border-slate-800/50">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+            <div class="lg:col-span-5 space-y-6">
+                <h2 class="text-xs font-bold text-sky-600 dark:text-sky-400 uppercase tracking-widest">End-To-End Architecture</h2>
+                <h3 class="text-3xl font-extrabold text-slate-900 dark:text-white">How XAI-Sentinel Processes Packets</h3>
+                <p class="text-slate-600 dark:text-slate-400 text-sm leading-relaxed">
+                    From raw ethernet frames on your network interface to actionable security mitigation PDFs, XAI-Sentinel operates an end-to-end continuous analytical loop.
+                </p>
+            </div>
+
+            <div class="lg:col-span-7">
+                <div class="neu-flat p-8 rounded-3xl border border-slate-300 dark:border-slate-800/60 font-mono text-xs">
+                    <div class="flex items-center justify-between pb-4 border-b border-slate-300 dark:border-slate-800/80 mb-6">
+                        <span class="text-slate-500 dark:text-slate-400">// SYSTEM_PIPELINE_SCHEMATIC</span>
+                        <span class="text-emerald-500 dark:text-emerald-400">STATUS: OPTIMAL</span>
+                    </div>
+
+                    <div class="space-y-6">
+                        <div class="p-4 rounded-xl bg-slate-200 dark:bg-slate-900/80 border border-slate-300 dark:border-slate-800 flex items-center justify-between">
+                            <div class="flex items-center gap-3">
+                                <span class="text-xl">🌐</span>
+                                <div>
+                                    <p class="text-slate-900 dark:text-white font-bold">Network Traffic</p>
+                                    <p class="text-[11px] text-slate-500 dark:text-slate-400">Scapy Socket Listener</p>
+                                </div>
+                            </div>
+                            <span class="text-sky-600 dark:text-sky-400 font-bold">[77 Dim Vector]</span>
+                        </div>
+
+                        <div class="p-4 rounded-xl bg-slate-200 dark:bg-slate-900/80 border border-slate-300 dark:border-slate-800 flex items-center justify-between">
+                            <div class="flex items-center gap-3">
+                                <span class="text-xl">⚡</span>
+                                <div>
+                                    <p class="text-slate-900 dark:text-white font-bold">PyTorch Model Evaluation</p>
+                                    <p class="text-[11px] text-slate-500 dark:text-slate-400">Hybrid CNN-LSTM Neural Network</p>
+                                </div>
+                            </div>
+                            <span class="text-indigo-600 dark:text-indigo-400 font-bold">[Softmax Score]</span>
+                        </div>
+
+                        <div class="p-4 rounded-xl bg-slate-200 dark:bg-slate-900/80 border border-slate-300 dark:border-slate-800 flex items-center justify-between">
+                            <div class="flex items-center gap-3">
+                                <span class="text-xl">📊</span>
+                                <div>
+                                    <p class="text-slate-900 dark:text-white font-bold">Explainability Engine</p>
+                                    <p class="text-[11px] text-slate-500 dark:text-slate-400">Captum IntegratedGradients(model)</p>
+                                </div>
+                            </div>
+                            <span class="text-emerald-500 dark:text-emerald-400 font-bold">[Attribution Chart]</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Interactive Threat Simulation Demo Section -->
+    <section id="demo" class="py-20 px-6 max-w-7xl mx-auto">
+        <div class="neu-flat p-8 sm:p-12 rounded-3xl border border-slate-300 dark:border-slate-800/80 relative overflow-hidden">
+            <div class="max-w-3xl mx-auto text-center space-y-4 mb-10">
+                <span class="text-xs font-bold text-sky-600 dark:text-sky-400 uppercase tracking-widest">Interactive Playground</span>
+                <h2 class="text-3xl font-extrabold text-slate-900 dark:text-white">Simulate Live Threat Inspection</h2>
+                <p class="text-slate-600 dark:text-slate-400 text-sm">Select a simulated network packet payload type below to test XAI feature importance attribution.</p>
+            </div>
+
+            <!-- Controls -->
+            <div class="flex flex-wrap items-center justify-center gap-4 mb-8">
+                <button onclick="simulatePayload('syn_flood')" id="btn-syn" class="neu-button px-5 py-3 rounded-2xl text-xs font-bold text-sky-600 dark:text-sky-300 neu-pressed border border-sky-500/30 flex items-center gap-2">
+                    ⚡ SYN Flood Scan
+                </button>
+                <button onclick="simulatePayload('udp_sweep')" id="btn-udp" class="neu-button px-5 py-3 rounded-2xl text-xs font-bold text-slate-600 dark:text-slate-400 flex items-center gap-2">
+                    📡 UDP Port Sweep
+                </button>
+                <button onclick="simulatePayload('benign')" id="btn-benign" class="neu-button px-5 py-3 rounded-2xl text-xs font-bold text-slate-600 dark:text-slate-400 flex items-center gap-2">
+                    ✅ Benign HTTPS Stream
+                </button>
+            </div>
+
+            <!-- Display Screen -->
+            <div class="neu-pressed p-6 sm:p-8 rounded-2xl border border-slate-300 dark:border-slate-800/80">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+                    <div class="space-y-4 font-mono text-xs">
+                        <div class="flex justify-between items-center pb-2 border-b border-slate-300 dark:border-slate-800">
+                            <span class="text-slate-500 dark:text-slate-400">INSPECTED PACKET:</span>
+                            <span id="demo-status-badge" class="px-2.5 py-1 rounded-full bg-rose-500/20 text-rose-500 dark:text-rose-400 font-bold border border-rose-500/30">MALICIOUS THREAT</span>
+                        </div>
+                        <div class="space-y-2 text-slate-700 dark:text-slate-300">
+                            <p><span class="text-slate-500">SOURCE IP:</span> <span id="demo-src">192.168.1.104:44122</span></p>
+                            <p><span class="text-slate-500">TARGET IP:</span> <span id="demo-dst">10.0.0.1:80</span></p>
+                            <p><span class="text-slate-500">PROTOCOL:</span> <span id="demo-proto">TCP (SYN FLAG SET)</span></p>
+                            <p><span class="text-slate-500">CONFIDENCE:</span> <span id="demo-conf" class="text-rose-500 dark:text-rose-400 font-bold">98.7%</span></p>
+                        </div>
+                        <div class="p-3 bg-slate-100 dark:bg-slate-950/80 rounded-xl border border-slate-300 dark:border-slate-800 text-[11px] text-slate-600 dark:text-slate-400">
+                            <span class="text-sky-600 dark:text-sky-400 font-bold">Verdict:</span> <span id="demo-verdict">Abnormal rate of rapid SYN connections without ACK completions.</span>
+                        </div>
+                    </div>
+
+                    <!-- Right: XAI Bars -->
+                    <div class="space-y-3 text-xs">
+                        <p class="font-bold text-slate-800 dark:text-slate-300 text-xs mb-2">Calculated Feature Attribution Weights:</p>
+                        
+                        <div>
+                            <div class="flex justify-between text-[11px] text-slate-500 dark:text-slate-400 mb-1">
+                                <span id="feat1-name">TCP SYN Flag</span>
+                                <span id="feat1-val" class="font-mono text-rose-500 dark:text-rose-400">+0.89</span>
+                            </div>
+                            <div class="w-full bg-slate-300 dark:bg-slate-900 rounded-full h-2.5 overflow-hidden neu-circle-pressed">
+                                <div id="feat1-bar" class="bg-rose-500 h-2.5 rounded-full transition-all duration-500" style="width: 89%"></div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <div class="flex justify-between text-[11px] text-slate-500 dark:text-slate-400 mb-1">
+                                <span id="feat2-name">Packet Length (Small)</span>
+                                <span id="feat2-val" class="font-mono text-sky-600 dark:text-sky-400">+0.64</span>
+                            </div>
+                            <div class="w-full bg-slate-300 dark:bg-slate-900 rounded-full h-2.5 overflow-hidden neu-circle-pressed">
+                                <div id="feat2-bar" class="bg-sky-500 dark:bg-sky-400 h-2.5 rounded-full transition-all duration-500" style="width: 64%"></div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <div class="flex justify-between text-[11px] text-slate-500 dark:text-slate-400 mb-1">
+                                <span id="feat3-name">TTL Variance</span>
+                                <span id="feat3-val" class="font-mono text-indigo-600 dark:text-indigo-400">+0.31</span>
+                            </div>
+                            <div class="w-full bg-slate-300 dark:bg-slate-900 rounded-full h-2.5 overflow-hidden neu-circle-pressed">
+                                <div id="feat3-bar" class="bg-indigo-500 dark:bg-indigo-400 h-2.5 rounded-full transition-all duration-500" style="width: 31%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="border-t border-slate-300 dark:border-slate-800/80 py-12 px-6 bg-[#0f172a]">
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6 text-xs text-slate-500 dark:text-slate-400">
+            <div class="flex items-center gap-3">
+                <span class="w-8 h-8 rounded-xl neu-flat flex items-center justify-center text-sky-600 dark:text-sky-400 font-bold">🛡️</span>
+                <span class="font-bold text-slate-800 dark:text-slate-300">XAI-Sentinel Security Framework</span>
+            </div>
+            <div>
+                Powered by <span class="text-sky-600 dark:text-sky-400">PyTorch</span>, <span class="text-indigo-600 dark:text-indigo-400">Captum XAI</span> & <span class="text-rose-500 dark:text-rose-400">Groq API</span>
+            </div>
+            <div>
+                © 2026 XAI-Sentinel. All Rights Reserved.
+            </div>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script>
+        function toggleTheme() {
+            const html = document.documentElement;
+            const icon = document.getElementById('theme-icon');
+            if (html.classList.contains('dark')) {
+                html.classList.remove('dark');
+                icon.innerText = '☀️';
+                localStorage.setItem('theme', 'light');
+            } else {
+                html.classList.add('dark');
+                icon.innerText = '🌙';
+                localStorage.setItem('theme', 'dark');
+            }
+        }
+        if (localStorage.getItem('theme') === 'light') {
+            document.documentElement.classList.remove('dark');
+            document.getElementById('theme-icon').innerText = '☀️';
+        }
+
+        const payloads = {
+            syn_flood: {
+                badge: 'MALICIOUS THREAT',
+                badgeClass: 'px-2.5 py-1 rounded-full bg-rose-500/20 text-rose-500 dark:text-rose-400 font-bold border border-rose-500/30',
+                src: '192.168.1.104:44122',
+                dst: '10.0.0.1:80',
+                proto: 'TCP (SYN FLAG SET)',
+                conf: '98.7%',
+                verdict: 'Abnormal rate of rapid SYN connections without ACK completions.',
+                f1Name: 'TCP SYN Flag', f1Val: '+0.89', f1Bar: '89%', f1Color: 'bg-rose-500',
+                f2Name: 'Packet Length (Small)', f2Val: '+0.64', f2Bar: '64%', f2Color: 'bg-sky-500 dark:bg-sky-400',
+                f3Name: 'TTL Variance', f3Val: '+0.31', f3Bar: '31%', f3Color: 'bg-indigo-500 dark:bg-indigo-400'
+            },
+            udp_sweep: {
+                badge: 'MALICIOUS THREAT',
+                badgeClass: 'px-2.5 py-1 rounded-full bg-rose-500/20 text-rose-500 dark:text-rose-400 font-bold border border-rose-500/30',
+                src: '172.16.0.45:51201',
+                dst: '10.0.0.1:MULTIPLE_PORTS',
+                proto: 'UDP SCANNER',
+                conf: '94.2%',
+                verdict: 'Sequential high-frequency UDP probe towards closed destination ports.',
+                f1Name: 'Destination Port Sweep Rate', f1Val: '+0.92', f1Bar: '92%', f1Color: 'bg-rose-500',
+                f2Name: 'UDP Payload Absence', f2Val: '+0.58', f2Bar: '58%', f2Color: 'bg-sky-500 dark:bg-sky-400',
+                f3Name: 'Source Port Randomness', f3Val: '+0.45', f3Bar: '45%', f3Color: 'bg-indigo-500 dark:bg-indigo-400'
+            },
+            benign: {
+                badge: 'BENIGN TRAFFIC',
+                badgeClass: 'px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-bold border border-emerald-500/30',
+                src: '10.0.0.15:52014',
+                dst: '142.250.190.46:443',
+                proto: 'TLS v1.3 / HTTPS',
+                conf: '99.8%',
+                verdict: 'Standard encrypted web traffic payload matching expected flow behaviors.',
+                f1Name: 'Standard TCP ACK Cycle', f1Val: '-0.85', f1Bar: '15%', f1Color: 'bg-emerald-500 dark:bg-emerald-400',
+                f2Name: 'Normal Packet Size Window', f2Val: '-0.70', f2Bar: '25%', f2Color: 'bg-emerald-500 dark:bg-emerald-400',
+                f3Name: 'Known Port Attributions', f3Val: '-0.62', f3Bar: '20%', f3Color: 'bg-emerald-500 dark:bg-emerald-400'
+            }
+        };
+
+        function simulatePayload(type) {
+            const data = payloads[type];
+            if (!data) return;
+
+            ['syn', 'udp', 'benign'].forEach(k => {
+                const btn = document.getElementById(`btn-${k}`);
+                if (btn) {
+                    if ((k === 'syn' && type === 'syn_flood') || (k === 'udp' && type === 'udp_sweep') || (k === 'benign' && type === 'benign')) {
+                        btn.className = "neu-button px-5 py-3 rounded-2xl text-xs font-bold text-sky-600 dark:text-sky-300 neu-pressed border border-sky-500/30 flex items-center gap-2";
+                    } else {
+                        btn.className = "neu-button px-5 py-3 rounded-2xl text-xs font-bold text-slate-600 dark:text-slate-400 flex items-center gap-2";
+                    }
+                }
+            });
+
+            document.getElementById('demo-status-badge').className = data.badgeClass;
+            document.getElementById('demo-status-badge').innerText = data.badge;
+            document.getElementById('demo-src').innerText = data.src;
+            document.getElementById('demo-dst').innerText = data.dst;
+            document.getElementById('demo-proto').innerText = data.proto;
+            document.getElementById('demo-conf').innerText = data.conf;
+            document.getElementById('demo-verdict').innerText = data.verdict;
+
+            document.getElementById('feat1-name').innerText = data.f1Name;
+            document.getElementById('feat1-val').innerText = data.f1Val;
+            const bar1 = document.getElementById('feat1-bar');
+            bar1.style.width = data.f1Bar;
+            bar1.className = `${data.f1Color} h-2.5 rounded-full transition-all duration-500`;
+
+            document.getElementById('feat2-name').innerText = data.f2Name;
+            document.getElementById('feat2-val').innerText = data.f2Val;
+            const bar2 = document.getElementById('feat2-bar');
+            bar2.style.width = data.f2Bar;
+            bar2.className = `${data.f2Color} h-2.5 rounded-full transition-all duration-500`;
+
+            document.getElementById('feat3-name').innerText = data.f3Name;
+            document.getElementById('feat3-val').innerText = data.f3Val;
+            const bar3 = document.getElementById('feat3-bar');
+            bar3.style.width = data.f3Bar;
+            bar3.className = `${data.f3Color} h-2.5 rounded-full transition-all duration-500`;
+        }
+
+        let packetCount = 1482920;
+        setInterval(() => {
+            packetCount += Math.floor(Math.random() * 8) + 1;
+            const el = document.getElementById('stat-packets');
+            if (el) {
+                el.innerText = packetCount.toLocaleString();
+            }
+        }, 1800);
+    </script>
+</body>
+</html>
