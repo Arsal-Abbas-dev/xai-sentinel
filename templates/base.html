@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <script>
+        // Apply saved theme before first paint (no flash)
+        try {
+            if (localStorage.getItem('theme') === 'light') document.documentElement.classList.remove('dark');
+        } catch (e) {}
+    </script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}XAI-Sentinel{% endblock %}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/sentinel.css') }}">
+    {% block head_extra %}{% endblock %}
+</head>
+<body>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <div class="app">
+        {% include 'sidepanel.html' %}
+        <main id="main" class="main {% block main_class %}{% endblock %}">
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+    <script src="{{ url_for('static', filename='js/theme.js') }}"></script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

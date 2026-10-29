@@ -1,6 +1,14 @@
 <!DOCTYPE html>
 <html lang="en" class="scroll-smooth dark">
 <head>
+    <script>
+        // Instant theme application before body renders
+        if (localStorage.getItem('theme') === 'light') {
+            document.documentElement.classList.remove('dark');
+        } else {
+            document.documentElement.classList.add('dark');
+        }
+    </script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>XAI-Sentinel | Explainable AI Network Intrusion Detection System</title>

@@ -9,16 +9,12 @@ from scapy.all import sniff, IP, TCP, UDP
 from groq import Groq
 from train_model import HybridCNNLSTM
 from captum.attr import IntegratedGradients
-import requests
-from dotenv import load_dotenv
 
 # ReportLab imports for PDF generation
 from reportlab.lib.pagesizes import letter
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
-
-load_dotenv()  # Load environment variables from .env file
 
 app = Flask(__name__)
 
@@ -39,12 +35,14 @@ except Exception as e:
     print(f"⚠️ Warning: Could not load model weights ({e}). Running with rule-based fallback.")
 
 # Groq Client Initialization
-groq_client = Groq(api_key=os.environ.get("GROQ_API_KEY", ))
+groq_client = Groq(api_key=os.environ.get("GROQ_API_KEY", "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"))
 
 packet_feature_buffer = []
 SEQUENCE_LENGTH = 10
 
-# Global state to store live detection metrics
+# Global state for live metrics and toggle control
+sniffing_active = False  # Default to False so it doesn't sniff automatically on startup
+
 traffic_data = {
     "total_packets": 0,
     "malicious_count": 0,
@@ -54,9 +52,6 @@ traffic_data = {
 }
 
 def explain_prediction(input_tensor, target_class=1):
-    """
-    Computes feature importance scores for a given input sequence tensor (1, Seq_Len, Features).
-    """
     try:
         input_tensor.requires_grad_()
         attributions, delta = ig.attribute(input_tensor, target=target_class, return_convergence_delta=True)
@@ -69,6 +64,10 @@ def explain_prediction(input_tensor, target_class=1):
 def analyze_packet(packet):
     global traffic_data, packet_feature_buffer
     
+    # Only process packets if sniffing is toggled ON
+    if not sniffing_active:
+        return
+
     if packet.haslayer(IP):
         traffic_data["total_packets"] += 1
         
@@ -99,12 +98,12 @@ def analyze_packet(packet):
         is_malicious = False
         reason = ""
 
-        # 1. Check Heuristic Rules First
+        # Check Heuristic Rules First
         if packet.haslayer(TCP) and 'S' in str(packet[TCP].flags) and len(packet) < 60:
             is_malicious = True
             reason = "Heuristic SYN Scan pattern detected"
 
-        # 2. Check CNN-LSTM Model with high-confidence threshold (>= 85%)
+        # Check CNN-LSTM Model with confidence threshold
         if not is_malicious and len(packet_feature_buffer) == SEQUENCE_LENGTH:
             try:
                 input_array = np.array(packet_feature_buffer, dtype=np.float32).reshape(1, SEQUENCE_LENGTH, NUM_FEATURES)
@@ -165,13 +164,37 @@ def index():
 def chat_page():
     return render_template("chat.html", active="chat")
 
+@app.route("/news")
+def news_page():
+    news_api_key = os.environ.get("NEWS_API_KEY", "YOUR_NEWS_API_KEY_HERE")
+    url = f"https://newsapi.org/v2/everything?q=cybersecurity&language=en&sortBy=publishedAt&pageSize=12&apiKey={news_api_key}"
+    try:
+        response = requests.get(url)
+        data = response.json()
+        articles = data.get("articles", []) if data.get("status") == "ok" else []
+    except Exception:
+        articles = []
+    return render_template("news.html", active="news", articles=articles)
+
 @app.route("/api/stats")
 def get_stats():
-    return jsonify(traffic_data)
+    return jsonify({
+        **traffic_data,
+        "sniffing_active": sniffing_active
+    })
+
+@app.route("/api/toggle-sniffing", methods=["POST"])
+def toggle_sniffing():
+    global sniffing_active
+    data = request.get_json(silent=True)
+    if data and "active" in data:
+        sniffing_active = bool(data["active"])
+    else:
+        sniffing_active = not sniffing_active
+    return jsonify({"sniffing_active": sniffing_active})
 
 @app.route("/api/ai-summary", methods=["POST"])
 def generate_ai_summary():
-    """Generates an AI security summary using Groq based on current traffic logs."""
     try:
         total = traffic_data["total_packets"]
         malicious = traffic_data["malicious_count"]
@@ -200,7 +223,6 @@ def generate_ai_summary():
 
 @app.route("/api/download-pdf", methods=["GET"])
 def download_pdf():
-    """Generates and streams a downloadable PDF security report including an AI summary."""
     try:
         total = traffic_data["total_packets"]
         malicious = traffic_data["malicious_count"]
@@ -229,12 +251,8 @@ def download_pdf():
         elements = []
         styles = getSampleStyleSheet()
 
-        title_style = ParagraphStyle(
-            'ReportTitle', parent=styles['Heading1'], fontSize=22, textColor=colors.HexColor('#0ea5e9'), spaceAfter=10
-        )
-        heading_style = ParagraphStyle(
-            'SectionHeading', parent=styles['Heading2'], fontSize=13, textColor=colors.HexColor('#334155'), spaceBefore=12, spaceAfter=6
-        )
+        title_style = ParagraphStyle('ReportTitle', parent=styles['Heading1'], fontSize=22, textColor=colors.HexColor('#0ea5e9'), spaceAfter=10)
+        heading_style = ParagraphStyle('SectionHeading', parent=styles['Heading2'], fontSize=13, textColor=colors.HexColor('#334155'), spaceBefore=12, spaceAfter=6)
         normal_style = styles['Normal']
 
         elements.append(Paragraph("🛡️ XAI-Sentinel Security Incident Report", title_style))
@@ -316,11 +334,10 @@ def chat_api():
         )
         return jsonify({"response": chat_completion.choices[0].message.content})
     except Exception as e:
-        return jsonify({"response": f"Error processing request: {str(e)}"}), 500
+        return jsonify({"response": f"Error processing request: {str(e)}", "sniffing_active": sniffing_active}), 500
 
 @app.route("/api/explain", methods=["POST"])
 def get_explanation():
-    """Returns top 10 feature importances for the most recent threat window."""
     if not packet_feature_buffer or len(packet_feature_buffer) < SEQUENCE_LENGTH:
         return jsonify({"error": "Insufficient buffer history for explanation."}), 400
     
@@ -350,24 +367,44 @@ def get_explanation():
         })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
-@app.route("/news")
-def news_page():
-    news_api_key = os.environ.get("NEWS_API_KEY", "")
-    url = f"https://newsapi.org/v2/everything?q=cybersecurity&language=en&sortBy=publishedAt&pageSize=12&apiKey={news_api_key}"
+    
+@app.route("/api/upload-logs", methods=["POST"])
+def upload_logs():
+    """Accepts uploaded packet log files and generates a Groq AI security overview."""
+    if 'file' not in request.files:
+        return jsonify({"error": "No file uploaded."}), 400
+    
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({"error": "No selected file."}), 400
     
     try:
-        response = requests.get(url)
-        data = response.json()
-        articles = data.get("articles", []) if data.get("status") == "ok" else []
+        # Read uploaded log text content
+        content = file.read().decode('utf-8', errors='ignore')
+        
+        # Truncate if the log file is excessively large to stay within context limits
+        if len(content) > 15000:
+            content = content[:15000] + "\n...[Log truncated due to length]"
+
+        prompt = (
+            f"Analyze these uploaded network packet logs or security data:\n\n"
+            f"{content}\n\n"
+            f"Provide a concise executive security summary, highlight any suspicious anomalies or attack patterns, "
+            f"and give recommended mitigation steps for the network administrator."
+        )
+
+        chat_completion = groq_client.chat.completions.create(
+            messages=[
+                {"role": "system", "content": "You are XAI-Sentinel AI, an expert cybersecurity incident responder."},
+                {"role": "user", "content": prompt}
+            ],
+            model="openai/gpt-oss-120b",
+        )
+        return jsonify({"summary": chat_completion.choices[0].message.content})
     except Exception as e:
-        print(f"Error fetching news: {e}")
-        articles = []
-
-    return render_template("news.html", active="news", articles=articles)
-
+        return jsonify({"error": f"Error processing file: {str(e)}"}), 500
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5001))
+    # Start the continuous background sniffer daemon thread once
     sniff_thread = threading.Thread(target=start_sniffing, daemon=True)
     sniff_thread.start()
-    app.run(debug=False, host="0.0.0.0", port=port)
+    app.run(debug=True, host="0.0.0.0", port=5001)
