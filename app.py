@@ -35,7 +35,7 @@ except Exception as e:
     print(f"⚠️ Warning: Could not load model weights ({e}). Running with rule-based fallback.")
 
 # Groq Client Initialization
-groq_client = Groq(api_key=os.environ.get("GROQ_API_KEY", "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"))
+groq_client = Groq(api_key=os.environ.get("GROQ_API_KEY", ""))
 
 packet_feature_buffer = []
 SEQUENCE_LENGTH = 10
@@ -166,7 +166,7 @@ def chat_page():
 
 @app.route("/news")
 def news_page():
-    news_api_key = os.environ.get("NEWS_API_KEY", "YOUR_NEWS_API_KEY_HERE")
+    news_api_key = os.environ.get("NEWS_API_KEY", "")
     url = f"https://newsapi.org/v2/everything?q=cybersecurity&language=en&sortBy=publishedAt&pageSize=12&apiKey={news_api_key}"
     try:
         response = requests.get(url)
